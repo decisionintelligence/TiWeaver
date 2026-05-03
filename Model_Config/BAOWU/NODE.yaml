@@ -1,0 +1,67 @@
+log_base_dir: ./Run/logs/NODE
+to_log_file: True
+to_stdout: True
+TB_dir: False
+checkpoints: ./Run/checkpoints/NODE
+log_level: INFO
+model_name: NODE
+
+data:
+  batch_size: 1024
+  split_dataset: [0.525, 0.175, 0.3] # 训练集、验证集、测试集的比例
+  interval: '3h'
+  freq: '60s'
+  data_name: BAOWU
+  root_path: dataset    # 宝武数据集的目录
+  data_path: merged_regular.csv # 60_LAV.csv  # 宝武数据集的文件名
+  num_workers: 3     # 0感觉加载数据有些慢了
+  embed: 0
+  target_num: 1
+
+model:
+  seq_len: 512
+  pred_len: 512
+  input_dim: 7
+  output_dim: 7
+  main_dim: 1
+
+  dim:
+    latent: 12
+
+  odefunc:
+    ode_method: dopri5
+    odeint_atol: 0.001
+    odeint_rtol: 0.001
+    adjoint: False
+  rnn_dim: 64
+  num_rnn_layers: 1
+  nfe: false
+
+  n_traj_samples: 3   # 考虑到VAE的latent representation是从正态分布中采样，因此采样数多一些更好
+  gcn_step: 3     # ChebConv的k，考虑三阶邻接节点    # 待搜索（待定最优）
+  gcn_layers: 2   # 待搜索（待定最优）
+  gcn_hidden_dim: 64    # 待搜索（待定最优）
+  filter_type: diff #diff_adv, diff, adv, unkP
+  recg_type: gru
+
+  loss:
+    recon_loss: False
+    pred_loss: True
+    criterion: mae
+    recon_coeff: 0.1
+
+train:
+  lr: 0.005
+  lradj: 'default'
+  epochs: 100
+  pct_start: 0.4
+  patience: 20
+  steps: [20, 30, 40, 50]
+  lr_decay_ratio: 0.1
+  log_every: 1
+
+GPU:
+  use_gpu: True
+  gpu: 1
+  use_multi_gpu: False
+  devices: '0, 1, 2, 3'

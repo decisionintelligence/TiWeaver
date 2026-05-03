@@ -1,0 +1,60 @@
+log_base_dir: ./Run/logs/LightGTS
+to_log_file: True
+to_stdout: True
+TB_dir: False
+checkpoints: ./Run/checkpoints/LightGTS
+log_level: INFO
+model_name: LightGTS
+exp_name: LightGTS
+
+data:
+  batch_size: 512
+  split_dataset: [0.525, 0.175, 0.3] # 训练集、验证集、测试集的比例
+  freq: '60s' # 'h'、'min'、's'
+  data_name: BAOWU
+  root_path: dataset    # 宝武数据集的目录
+  data_path: merged_regular.csv # 60_LAV.csv  # 宝武数据集的文件名
+  num_workers: 3
+  embed: 0
+  target_num: 1
+
+model:
+  seq_len: 512
+  pred_len: 512
+  main_dim: 1
+  c_in: 7
+  head_type: 'prediction'
+  patch_len: 52 # 120s: 52
+  stride: 24
+  n_embedding: 128 
+  revin: 1 
+  e_layers: 3 
+  d_layers: 3
+  n_heads: 8 
+  d_model: 256 
+  d_ff: 512 
+  dropout: 0.2 
+  head_dropout: 0.2 
+  attn_dropout: 0.2 
+  size: '4M'
+  freeze_embedding: 1
+  zero_shot: False
+  loss:
+    pred_loss: True
+    criterion: mae # mae
+    alpha: 0.5
+
+train:
+  lr: 0.0001
+  lradj: 'default'
+  num_epochs: 20
+  freeze_epochs: 0
+  pct_start: 0.3
+  patience: 30
+  log_every: 1
+
+GPU:
+  use_gpu: True
+  gpu: 0
+  use_multi_gpu: False
+  devices: '0, 1, 2, 3'

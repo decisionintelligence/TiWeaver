@@ -1,0 +1,41 @@
+log_base_dir: ./Run/logs/LR
+to_log_file: True
+to_stdout: True
+TB_dir: False
+checkpoints: ./Run/checkpoints/LR
+log_level: INFO
+model_name: LR
+
+data:
+  batch_size: 128
+  split_dataset: [0.7,0.1,0.2] # 训练集、验证集、测试集的比例
+  # interval: '3h'
+  freq: '60s' # 'h'、'min'、's'
+  data_name: BAOWU
+  root_path: dataset    # 宝武数据集的目录
+  data_path: merged_regular.csv # 60_LAV.csv  # 宝武数据集的文件名
+  num_workers: 3
+  embed: 0
+  target_num: 1
+
+model:
+  seq_len: 336
+  pred_len: 336
+  main_dim: 1
+  loss:
+    pred_loss: True
+    criterion: mse
+
+train:
+  lr: 0.005
+  lradj: 'default'
+  epochs: 10
+  pct_start: 0.4
+  patience: 2
+  log_every: 1
+
+GPU:
+  use_gpu: True
+  gpu: 0
+  use_multi_gpu: False
+  devices: '0, 1, 2, 3'

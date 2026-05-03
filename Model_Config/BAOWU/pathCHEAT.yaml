@@ -1,0 +1,64 @@
+log_base_dir: ./Run/logs/pathCHEAT
+to_log_file: True
+to_stdout: True
+TB_dir: False
+checkpoints: ./Run/checkpoints/pathCHEAT
+log_level: INFO
+model_name: pathCHEAT
+exp_name: TimeCHEAT
+
+data:
+  batch_size: 64
+  split_dataset: [0.525, 0.175, 0.3] # 训练集、验证集、测试集的比例
+  freq: '120s' # 'h'、'min'、's'
+  data_name: BAOWU_irregular
+  root_path: dataset    # 宝武数据集的目录
+  data_path: merged_irregular.csv # 60_LAV.csv  # 宝武数据集的文件名
+  num_workers: 3
+  embed: 0
+  target_num: 1
+
+model:
+  seq_len: 336
+  pred_len: 336
+  main_dim: 1
+  n_patches: 8
+  latent_dim: 64
+  n_layers: 2
+  ref_points: 336
+  attn_head: 1
+  former_factor: 1
+  former_dff: 128
+  former_layers: 3
+  dropout: 0.1
+  channels: 7
+  former_output_attention: None
+  former_heads: 8
+  former_activation: gelu
+  batch_norm: 1
+  d_ff: 64
+  d_model: 2
+  patch_size_list: [[56,28,12,24],[42,28,16,21],[56,16,28,42]]
+  k: 2
+  residual_connection: 1
+  num_nodes: 3
+  layer_nums: 2
+  num_experts_list: [4, 4, 4]
+  revin: 1
+  loss:
+    pred_loss: True
+    criterion: mae
+
+train:
+  lr: 0.001
+  lradj: 'default'
+  epochs: 10
+  pct_start: 0.4
+  patience: 3
+  log_every: 1
+
+GPU:
+  use_gpu: True
+  gpu: 0
+  use_multi_gpu: False
+  devices: '0, 1, 2, 3'

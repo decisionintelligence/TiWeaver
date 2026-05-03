@@ -1,0 +1,286 @@
+import math
+import warnings
+
+import torch
+from torch import Tensor
+from torch.nn.utils.rnn import pad_sequence
+from torch.utils.data import Dataset, ConcatDataset
+
+# from utils.globals import logger
+# from utils.ExpConfigs import ExpConfigs
+# from utils.configs import configs
+from Data_Provider.dependencies.tsdm.tasks.ushcn_debrouwer2019 import USHCN_DeBrouwer2019
+from Data_Provider.dependencies.tsdm.tasks.ushcn_debrouwer2019 import Sample
+
+warnings.filterwarnings('ignore')   
+
+class Data(Dataset):
+    def __init__(
+        self, 
+        configs,
+        flag: str = 'train', 
+        **kwargs
+    ):
+        '''
+        warpper for USHCN DeBrouwer2019 dataset implemented in tsdm
+        tsdm: https://openreview.net/forum?id=a-bD9-0ycs0
+
+        this version of USHCN does not align the timesteps among samples (but do align within sample), which means:
+        - It use custom collate_fn to pad trailing 0s in each batch
+        - Tensor length along time dimension is not fixed in different batches, which depends on the max number of timesteps in each batch
+        - time steps does not spread evenly, and the start and end time is also not fixed
+
+        - max time length: 200
+        - number of variables: 5
+        - number of samples: 1114
+        - actual time length: 4 year
+        '''
+        # logger.debug(f"getting {flag} set of USHCN in tsdm format")
+        print(f"getting {flag} set of USHCN in tsdm format")
+        self.configs = configs
+        assert flag in ['train', 'test', 'val', 'test_all']
+        self.flag = flag
+
+        self.cache = True
+
+        self.seq_len = configs.model.seq_len
+        # self.label_len = configs.model.label_len
+        self.pred_len = configs.model.pred_len
+
+        self.dataset_root_path = configs.data.root_path + '/' + configs.data.data_path
+
+        self.preprocess()
+
+    def __getitem__(self, index):
+        return self.dataset[index]
+
+    def __len__(self):
+        return len(self.dataset)
+
+    def preprocess(self):
+        r"""
+        preprocess without time alignment
+        """
+        if self.seq_len + self.pred_len > 200:
+            # logger.exception(f"{self.seq_len+self.pred_len=} is too large. Expect the value smaller than 200")
+            print(f"{self.seq_len+self.pred_len=} is too large. Expect the value smaller than 200")
+            exit(1)
+
+        task = USHCN_DeBrouwer2019(
+            seq_len=self.seq_len - 0.5,
+            pred_len=self.pred_len
+        )
+
+        if self.flag != "val":
+            # val set will follow the setting of train set
+            # determine the max number of observations along time, among all samples
+            dataset = ConcatDataset([
+                task.get_dataset((0, "train")), 
+                task.get_dataset((0, "val")), 
+                task.get_dataset((0, "test")), 
+            ]) # use all data to determine max length
+            self.seq_len_max_irr = 0
+            self.pred_len_max_irr = 0
+            self.patch_len_max_irr = 0
+            seq_residual_len = 0
+
+            SEQ_LEN = self.configs.model.seq_len
+            PRED_LEN = self.configs.model.pred_len
+
+            PATCH_LEN = self.configs.model.patch_len
+
+            for sample in dataset:
+                x_mark, x, y_mark = sample.inputs
+                y = sample.targets
+                if x.shape[0] > self.seq_len_max_irr:
+                    self.seq_len_max_irr = x.shape[0]
+                if y.shape[0] > self.pred_len_max_irr:
+                    self.pred_len_max_irr = y.shape[0]
+
+                if self.configs.data.collate_fn == "collate_fn_patch":
+                    assert SEQ_LEN % PATCH_LEN == 0, f"seq_len {SEQ_LEN} should be divisible by patch_len {PATCH_LEN}"
+                    n_patch: int = SEQ_LEN // PATCH_LEN
+                    n_patch_y: int = math.ceil(self.configs.model.pred_len / PATCH_LEN)
+
+                    patch_i_end_previous = 0
+                    for i in range(n_patch):
+                        observations = x_mark < ((i + 1) * PATCH_LEN / 200)
+                        patch_i_end = observations.sum()
+                        sample_mask = slice(patch_i_end_previous, patch_i_end)
+                        x_patch_i = x[sample_mask]
+                        if len(x_patch_i) > self.patch_len_max_irr:
+                            self.patch_len_max_irr = len(x_patch_i)
+
+                        patch_i_end_previous = patch_i_end
+
+                    patch_j_end_previous = 0
+                    for j in range(n_patch_y):
+                        observations = y_mark < (((n_patch + j + 1) * PATCH_LEN) / 200)
+                        patch_j_end = observations.sum()
+                        sample_mask = slice(patch_j_end_previous, patch_j_end)
+                        y_patch_j = y[sample_mask]
+                        if len(y_patch_j) > self.patch_len_max_irr:
+                            self.patch_len_max_irr = len(y_patch_j)
+
+                        patch_j_end_previous = patch_j_end
+
+            if self.configs.data.collate_fn == "collate_fn_patch":
+                n_patch: int = SEQ_LEN // PATCH_LEN
+                n_patch_y: int = math.ceil(self.configs.model.pred_len / PATCH_LEN)
+                self.seq_len_max_irr = max(self.seq_len_max_irr, self.patch_len_max_irr * n_patch)
+                self.pred_len_max_irr = max(self.pred_len_max_irr, self.patch_len_max_irr * n_patch_y)
+            
+            del dataset
+
+            # create a new field in global configs to pass information to models
+            self.configs.model.seq_len_max_irr = self.seq_len_max_irr
+            self.configs.model.pred_len_max_irr = self.pred_len_max_irr
+            # self.configs.pred_len_max_irr = max(self.pred_len_max_irr, self.patch_len_max_irr * n_patch_y)
+            if self.configs.data.collate_fn in ["collate_fn_patch", "collate_fn_tpatch"]:
+                self.configs.model.patch_len_max_irr = self.patch_len_max_irr
+                # logger.debug(f"{self.configs.patch_len_max_irr=}")
+                print(f"{self.configs.model.patch_len_max_irr=}")
+            # logger.debug(f"{self.configs.seq_len_max_irr=}")
+            # logger.debug(f"{self.configs.pred_len_max_irr=}")
+            print(f"{self.configs.model.seq_len_max_irr=}")
+            print(f"{self.configs.model.pred_len_max_irr=}")
+
+
+        if self.flag == "test_all":
+            # merge the 3 datasets
+            dataset = ConcatDataset([
+                task.get_dataset((0, "train")), 
+                task.get_dataset((0, "val")), 
+                task.get_dataset((0, "test")), 
+            ])
+        else:
+            dataset = task.get_dataset(
+                (0, self.flag)
+            )
+
+        self.dataset = dataset
+
+def fix_nan_x_mark(x_mark, seq_len):
+    L_TOTAL = 200
+    # Create a tensor of indices
+    BATCH_SIZE, SEQ_LEN_MAX_IRR, _ = x_mark.shape
+    indices = torch.linspace(start=seq_len / L_TOTAL - 2 * 0.01, end=seq_len / L_TOTAL - 0.001, steps=SEQ_LEN_MAX_IRR).to(x_mark.device).view(1, -1, 1).repeat(BATCH_SIZE, 1, 1)
+
+    # Create a mask for NaN values
+    nan_mask = torch.isnan(x_mark)
+
+    # Fill NaN values using the mask
+    x_mark[nan_mask] = indices[nan_mask]
+
+    return x_mark
+
+def fix_nan_y_mark(y_mark):
+    # Create a tensor of indices
+    BATCH_SIZE, PRED_LEN, _ = y_mark.shape
+    indices = torch.linspace(start=1 - 2 * 0.01, end=1 - 0.001, steps=PRED_LEN).to(y_mark.device).view(1, -1, 1).repeat(BATCH_SIZE, 1, 1)
+
+    # Create a mask for NaN values
+    nan_mask = torch.isnan(y_mark)
+
+    # Fill NaN values using the mask
+    y_mark[nan_mask] = indices[nan_mask]
+
+    return y_mark
+
+def collate_fn(
+    batch: list[Sample],
+    configs
+) -> dict[Tensor]:
+    '''
+    rewrite the collate_fn to return dictionary of Tensors, aligning with api
+    '''
+    # global configs
+    seq_len_max_irr: int = configs.model.seq_len_max_irr
+    pred_len_max_irr: int = configs.model.pred_len_max_irr
+
+    xs: list[Tensor] = []
+    ys: list[Tensor] = []
+    x_marks: list[Tensor] = []
+    y_marks: list[Tensor] = []
+    x_masks: list[Tensor] = []
+    y_masks: list[Tensor] = []
+    sample_IDs: list[int] = []
+
+    for sample in batch:
+        x_mark, x, y_mark = sample.inputs
+        y = sample.targets
+        sample_ID = sample.key
+
+        # create a mask for looking up the target values
+        y_mask = y.isfinite()
+        x_mask = x.isfinite()
+
+        xs.append(x)
+        x_marks.append(x_mark)
+        x_masks.append(x_mask)
+
+        ys.append(y)
+        y_marks.append(y_mark)
+        y_masks.append(y_mask)
+
+        sample_IDs.append(sample_ID)
+
+    ENC_IN = xs[0].shape[-1]
+
+    # to ensure padding to n_observations_max, we manually append a sample with desired shape then removed.
+    xs.append(torch.zeros(seq_len_max_irr, ENC_IN))
+    x_marks.append(torch.zeros(seq_len_max_irr))
+    x_masks.append(torch.zeros(seq_len_max_irr, ENC_IN))
+    ys.append(torch.zeros(pred_len_max_irr, ENC_IN))
+    y_marks.append(torch.zeros(pred_len_max_irr))
+    y_masks.append(torch.zeros(pred_len_max_irr, ENC_IN))
+
+    xs=pad_sequence(xs, batch_first=True, padding_value=float("nan"))
+    x_marks=pad_sequence(x_marks, batch_first=True, padding_value=float("nan"))
+    x_masks=pad_sequence(x_masks, batch_first=True)
+    ys=pad_sequence(ys, batch_first=True, padding_value=float("nan"))
+    y_marks=pad_sequence(y_marks, batch_first=True, padding_value=float("nan"))
+    y_masks=pad_sequence(y_masks, batch_first=True)
+
+    xs = xs[:-1]
+    x_marks = x_marks[:-1]
+    x_masks = x_masks[:-1]
+    ys = ys[:-1]
+    y_marks = y_marks[:-1]
+    y_masks = y_masks[:-1]
+
+    sample_IDs = torch.tensor(sample_IDs).float()
+
+    if configs.data.missing_rate > 0:
+        # manually mask out some observations in input
+        # Flatten the mask and data tensor
+        flat_mask = x_masks.view(-1)
+        flat_x = xs.view(-1)
+
+        # Find indices of available data (where mask is 1)
+        available_flat_indices = torch.where(flat_mask == 1)[0]
+        num_available = available_flat_indices.size(0)
+        num_to_mask = int(configs.data.missing_rate * num_available)
+
+        if num_to_mask > 0:
+            # Generate random permutation on the same device
+            perm = torch.randperm(num_available, device=available_flat_indices.device)
+            selected_flat = available_flat_indices[perm[:num_to_mask]]
+            
+            # Apply masking to x and x_mask. In-place operation
+            flat_x[selected_flat] = torch.nan
+            flat_mask[selected_flat] = 0
+        else:
+            # logger.warning(f"Number of observations {num_available} * missing rate {configs.missing_rate} = {num_to_mask} observations to be masked. Tips: either observations are too sparse, or --missing_rate is too small. Consider increase --missing_rate.")
+            print(f"Number of observations {num_available} * missing rate {configs.data.missing_rate} = {num_to_mask} observations to be masked. Tips: either observations are too sparse, or --missing_rate is too small. Consider increase --missing_rate.")
+
+
+    return {
+        "x": torch.nan_to_num(xs),
+        "x_mark": fix_nan_x_mark(x_marks.unsqueeze(-1), seq_len=configs.model.seq_len).float(),
+        "x_mask": x_masks.float(),
+        "y": torch.nan_to_num(ys),
+        "y_mark": fix_nan_y_mark(y_marks.unsqueeze(-1)).float(),
+        "y_mask": y_masks.float(),
+        "sample_ID": sample_IDs
+    }
