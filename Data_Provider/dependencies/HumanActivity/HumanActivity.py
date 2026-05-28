@@ -357,11 +357,3 @@ def variable_time_collate_fn_activity(batch, configs, device = torch.device("cpu
 
     data_dict = utils.split_and_subsample_batch(data_dict, configs, data_type = data_type)
     return data_dict
-
-
-# if __name__ == '__main__':
-# 	torch.manual_seed(1991)
-
-# 	dataset = PersonActivity('data/PersonActivity', download=True)
-# 	dataloader = DataLoader(dataset, batch_size=30, shuffle=True, collate_fn= variable_time_collate_fn_activity)
-# 	dataloader.__iter__().next()

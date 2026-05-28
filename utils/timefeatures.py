@@ -17,33 +17,6 @@ class TimeFeature:
         return self.__class__.__name__ + "()"
 
 
-# class SecondOfMinute(TimeFeature):
-#     """Minute of hour encoded as value between [-0.5, 0.5]"""
-
-#     def __call__(self, dates) -> np.ndarray:
-#         if not isinstance(dates, pd.DatetimeIndex):
-#             dates = pd.DatetimeIndex(dates)
-#         return dates.second / 59.0 - 0.5
-
-# class MinuteOfHour(TimeFeature):
-#     """Minute of hour encoded as value between [-0.5, 0.5]"""
-
-#     def __call__(self, dates) -> np.ndarray:
-#         if not isinstance(dates, pd.DatetimeIndex):
-#             dates = pd.DatetimeIndex(dates)
-#         return dates.minute / 59.0 - 0.5
-
-# class HourOfDay(TimeFeature):
-#     """Hour of day encoded as value between [-0.5, 0.5]"""
-
-#     def __call__(self, dates) -> np.ndarray:
-#         if not isinstance(dates, pd.DatetimeIndex):
-#             dates = pd.DatetimeIndex(dates)
-#         return dates.hour / 23.0 - 0.5
-
-
-
-
 class SecondOfMinute(TimeFeature):
     """Minute of hour encoded as value between [-0.5, 0.5]"""
 

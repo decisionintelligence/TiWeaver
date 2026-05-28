@@ -1,41 +1,26 @@
-log_base_dir: ./Run/logs/TAPNet
+log_base_dir: ./Run/logs/TiWeaver
 to_log_file: True
 to_stdout: True
 TB_dir: False
-checkpoints: ./Run/checkpoints/TAPNet
+checkpoints: ./Run/checkpoints/TiWeaver
 log_level: INFO
-model_name: dynamic_patching_model
-# exp_name: regular
+model_name: TiWeaver
 
 data:
   batch_size: 512
-  split_dataset: [0.6, 0.2, 0.2] # 训练集、验证集、测试集的比例
-  # interval: '3h'
-  freq: '3600s' # '?s'
-  data_name: regular
-  root_path: dataset    # 数据集的目录
-  data_path: ETTh1.csv # 60_LAV.csv  # 数据集的文件名
+  split_dataset: [0.7, 0.1, 0.2]
+  data_name: exchange 
+  root_path: dataset
+  data_path: exchange.csv
   num_workers: 3
   embed: 0
-  target_num: 7
   collate_fn: collate_fn
   missing_rate: 0.0
 
 model:
   num_latent_token: 4
-  patch_len_list: [12, 24, 48]
-  pre96: 32
-  pre192: 32
-  pre720: 32
-  pre336: 168
-  time_embed_type: rope
-  var_att_type: mask_cross_att
-  group_type: gap
-  time: 1
-  catt: 1
-  gap: 1
   sweep: 0
-  seq_len: 512
+  seq_len: 596
   pred_len: 96
   main_dim: 7
   d_ff: 128
@@ -45,12 +30,9 @@ model:
   pred_len_max_irr: null
   patch_len_max_irr: null
   min_patch_size: 4
-  use_fft: False
-  fft_k: 2
   threshold: 0.5
   layer_number: 3
   enc_in: 7
-  revin: 1
   e_layers: 3
   factor: 3
   n_heads: 2
@@ -61,21 +43,12 @@ model:
   gpu: 0
   dim:
     latent: 512
-  odefunc:
-    use: False
-    ode_method: 'dopri5'
-    odeint_atol: 1e-4
-    odeint_rtol: 1e-3
-    adjoint: False
   loss:
-    pred_loss: True
-    recon_loss: False
-    recon_loss_weight: 1
-    criterion: mse # mae
+    criterion: mse 
 
 train:
   lr: 0.005
-  lradj: 'TST'
+  lradj: 'ExponentialDecayLR'
   epochs: 300
   pct_start: 0.4
   patience: 10

@@ -1,7 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.nn.utils import weight_norm
 import math
 
 
@@ -150,9 +148,6 @@ class DataEmbedding(nn.Module):
 
         self.value_embedding = TokenEmbedding(c_in=c_in, d_model=d_model)
         self.position_embedding = PositionalEmbedding(d_model=d_model)
-        # self.temporal_embedding = TemporalEmbedding(d_model=d_model, embed_type=embed_type,
-        #                                             freq=freq) if embed_type != 'timeF' else TimeFeatureEmbedding(
-        #     d_model=d_model, embed_type=embed_type, freq=freq)
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x, x_mark=None):
@@ -160,7 +155,6 @@ class DataEmbedding(nn.Module):
             x = self.value_embedding(x) + self.temporal_embedding(x_mark) + self.position_embedding(x)
         else:
             x = self.value_embedding(x) + self.position_embedding(x)
-        # x = self.value_embedding(x) + self.temporal_embedding(x_mark) + self.position_embedding(x)
         return self.dropout(x)
 
 
@@ -180,7 +174,6 @@ class DataEmbedding_wo_pos(nn.Module):
             x = self.value_embedding(x) + self.temporal_embedding(x_mark)
         else:
             x = self.value_embedding(x)
-        # x = self.value_embedding(x) + self.temporal_embedding(x_mark)
         return self.dropout(x)
 
 class DataEmbedding_wo_pos_temp(nn.Module):
@@ -215,9 +208,7 @@ class DataEmbedding_wo_temp(nn.Module):
 
 
 class AirEmbedding(nn.Module):
-    '''
-    Embed catagorical variables.
-    '''
+
     def __init__(self, h2d, d2w, d2m, m2y, station, num_nodes):
         super(AirEmbedding, self).__init__()
         self.embed_h2d = nn.Embedding(24, h2d)

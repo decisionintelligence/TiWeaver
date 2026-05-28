@@ -71,7 +71,6 @@ class Data(Dataset):
             - 35: WBC [White blood cell count (cells/nL)]
         - number of samples: 11981
         '''
-        # logger.debug(f"getting {flag} set of PhysioNet'12 in tsdm format")
         print(f"getting {flag} set of PhysioNet'12 in tsdm format")
         self.configs = configs
         assert flag in ['train', 'test', 'val', 'test_all']
@@ -80,7 +79,6 @@ class Data(Dataset):
         self.cache = True
 
         self.seq_len = configs.model.seq_len
-        # self.label_len = configs.model.label_len
         self.pred_len = configs.model.pred_len
 
         self.dataset_root_path = configs.data.root_path + '/' + configs.data.data_path
@@ -98,7 +96,6 @@ class Data(Dataset):
         preprocess without time alignment
         """
         if self.seq_len + self.pred_len > 48:
-            # logger.exception(f"{self.seq_len+self.pred_len=} is too large. Expect the value smaller than 48")
             print(f"{self.seq_len+self.pred_len=} is too large. Expect the value smaller than 48")
             exit(1)
 
@@ -171,13 +168,9 @@ class Data(Dataset):
             # create a new field in global configs to pass information to models
             self.configs.model.seq_len_max_irr = self.seq_len_max_irr
             self.configs.model.pred_len_max_irr = self.pred_len_max_irr
-            # self.configs.pred_len_max_irr = max(self.pred_len_max_irr, self.patch_len_max_irr * n_patch_y)
             if self.configs.data.collate_fn in ["collate_fn_patch", "collate_fn_tpatch"]:
                 self.configs.model.patch_len_max_irr = self.patch_len_max_irr
-                # logger.debug(f"{self.configs.patch_len_max_irr=}")
                 print(f"{self.configs.model.patch_len_max_irr=}")
-            # logger.debug(f"{self.configs.seq_len_max_irr=}")
-            # logger.debug(f"{self.configs.pred_len_max_irr=}")
             print(f"{self.configs.model.seq_len_max_irr=}")
             print(f"{self.configs.model.pred_len_max_irr=}")
 
@@ -307,7 +300,6 @@ def collate_fn(
             flat_x[selected_flat] = torch.nan
             flat_mask[selected_flat] = 0
         else:
-            # logger.warning(f"Number of observations {num_available} * missing rate {configs.missing_rate} = {num_to_mask} observations to be masked. Tips: either observations are too sparse, or --missing_rate is too small. Consider increase --missing_rate.")
             print(f"Number of observations {num_available} * missing rate {configs.data.missing_rate} = {num_to_mask} observations to be masked. Tips: either observations are too sparse, or --missing_rate is too small. Consider increase --missing_rate.")
 
     return {
@@ -324,13 +316,7 @@ def collate_fn_patch(
     batch: list[Sample],
     configs,
 ) -> dict[Tensor]:
-    '''
-    '''
-    # global configs
-    seq_len_max_irr: int = configs.model.seq_len_max_irr
-    pred_len_max_irr: int = max(configs.model.pred_len_max_irr, configs.model.patch_len_max_irr)
-    # actual patch length can be smaller or even greater than configs.patch_len, depending on the actual sampling rate of the irregular time series
-    # because configs.patch_len is describing number of time units (e.g., 12 hours), but patch_len_max_irr is describing number of actual observations
+
     patch_len_max_irr: int = configs.model.patch_len_max_irr
 
     xs: list[Tensor] = []
@@ -436,10 +422,8 @@ def collate_fn_patch(
             flat_x[selected_flat] = torch.nan
             flat_mask[selected_flat] = 0
         else:
-            # logger.warning(f"Number of observations {num_available} * missing rate {configs.missing_rate} = {num_to_mask} observations to be masked. Tips: either observations are too sparse, or --missing_rate is too small. Consider increase --missing_rate.")
             print(f"Number of observations {num_available} * missing rate {configs.data.missing_rate} = {num_to_mask} observations to be masked. Tips: either observations are too sparse, or --missing_rate is too small. Consider increase --missing_rate.")
 
-    # note that patch_len_max_irr * n_patch does not necessarily equal to configs.seq_len. see patch_len_max_irr definition for explanation
     return {
         "x": torch.nan_to_num(xs.view(-1, patch_len_max_irr * n_patch, ENC_IN)),
         "x_mark": x_marks.view(-1, patch_len_max_irr * n_patch).unsqueeze(-1).float(),
@@ -453,9 +437,7 @@ def collate_fn_patch(
 def collate_fn_tpatch(
     batch: list[dict[str,Tensor]],
 ) -> dict[str,Tensor]:
-    '''
-    patchify version of collate_fn for tPatchGNN
-    '''
+
     global configs
 
     xs: list[Tensor] = []
@@ -552,7 +534,6 @@ def collate_fn_tpatch(
             flat_x[selected_flat] = torch.nan
             flat_mask[selected_flat] = 0
         else:
-            # logger.warning(f"Number of observations {num_available} * missing rate {configs.missing_rate} = {num_to_mask} observations to be masked. Tips: either observations are too sparse, or --missing_rate is too small. Consider increase --missing_rate.")
             print(f"Number of observations {num_available} * missing rate {configs.missing_rate} = {num_to_mask} observations to be masked. Tips: either observations are too sparse, or --missing_rate is too small. Consider increase --missing_rate.")
 
     return {

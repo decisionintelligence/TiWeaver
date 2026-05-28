@@ -10,38 +10,15 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 import argparse
 import torch
-import random
 from utils.utils import parsing_syntax, ConfigDict, load_config, update_config, fix_seed
-from exp.exp_align_forecasting import Exp_Ailgn_Forecasting
-from exp.exp_align_rose import Exp_Ailgn_ROSE
-from exp.exp_irregular_rose import Exp_Irregular_ROSE
-from exp.exp_irregular_timecheat import Exp_Irregular_TimeCHEAT
-from exp.exp_irregular_forecasting import Exp_Irregular_Forecasting
-from exp.exp_regular_forecasting import Exp_Regular_Forecasting
-from exp.exp_align_lightgts import Exp_Ailgn_LightGTS
+from exp.exp_forecasting import Exp_Forecasting
 
-EXP_MAP = {
-    'baowu': Exp_Ailgn_Forecasting,
-    'ROSE': Exp_Ailgn_ROSE,
-    'irregular_ROSE': Exp_Irregular_ROSE,
-    'TimeCHEAT': Exp_Irregular_TimeCHEAT,
-    'irregular': Exp_Irregular_Forecasting,
-    'regular': Exp_Regular_Forecasting,
-    'LightGTS': Exp_Ailgn_LightGTS
-}
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Dynamical System')
 
-    parser.add_argument('--config_filename', type=str, default='./Model_Config/BAOWU/Pathformer.yaml', help='Configuration yaml file')
-    parser.add_argument('--itr', type=int, default=1, help='Number of experiments.')
+    parser.add_argument('--config_filename', type=str, default='./Model_Config/TiWeawer.yaml', help='Configuration yaml file')
     parser.add_argument('--random_seed', type=int, default=2021, help='Random seed.')
-    parser.add_argument('--des', type=str, help="description of experiment.")
-    parser.add_argument("--exp_name", type=str, default="baowu", help="exp name")
-    parser.add_argument("--time_mark", type=bool, default=False, help="time_mark")
-    parser.add_argument("--is_debug", type=bool, default=False, help="debug")
-    parser.add_argument("--rolling", type=bool, default=False, help="rolling")
 
-    # parser.add_argument('--loss', type=str, default='huber', help='debug mode.')
     args, unknown = parser.parse_known_args()
     unknown = parsing_syntax(unknown)
 
@@ -68,15 +45,12 @@ if __name__ == '__main__':
         args.GPU.device_ids = [int(id_) for id_ in device_ids]
         args.GPU.gpu = args.GPU.device_ids[0]
 
-    rmse_list, mae_list, mape_list = [], [], []
-    for exp_idx in range(args.itr):
-        args.exp_idx = exp_idx
-        if args.to_stdout:
-            print('\nNo%d experiment ~~~' % exp_idx)
 
-        exp = EXP_MAP[args.exp_name](args)
-        
-        exp.train()
-        torch.cuda.empty_cache()
-        exp.test()
+    exp = Exp_Forecasting(args)
+    
+    exp.train()
+    
+    torch.cuda.empty_cache()
+
+    exp.test()
 

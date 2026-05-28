@@ -53,7 +53,6 @@ def update_config(config, unknown_args):
         config_path = key.split('-')
         cur = config
         for node in config_path:
-            # print(node)
             assert node in cur.keys(), "path not exist"
             if isinstance(cur[node], ConfigDict):
                 cur = cur[node]
@@ -63,18 +62,6 @@ def update_config(config, unknown_args):
                 except (NameError, SyntaxError):
                     cur[node] = value
     return config
-
-
-# def load_graph_data(dataset_path):
-#     npz_path = os.path.join(dataset_path, 'graph_data.npz')
-#     data = np.load(npz_path)
-
-#     adj_mx = data['adj_mx']
-#     edge_index = data['edge_index']
-#     edge_attr = data['edge_attr']   # {diff_dist, dist_km, direction}
-#     node_attr = data['node_attr']
-
-#     return adj_mx, edge_index.T, edge_attr, node_attr
 
 
 def fix_seed(seed):

@@ -44,7 +44,6 @@ class Data(Dataset):
         self.cache = True
 
         self.seq_len = configs.model.seq_len
-        # self.label_len = configs.model.label_len
         self.pred_len = configs.model.pred_len
 
         self.dataset_root_path = configs.data.root_path + '/' + configs.data.data_path
@@ -80,12 +79,6 @@ class Data(Dataset):
             self.seq_len_max_irr = 0
             self.pred_len_max_irr = 0
             self.patch_len_max_irr = 0
-            seq_residual_len = 0
-
-            SEQ_LEN = self.configs.model.seq_len
-            PRED_LEN = self.configs.model.pred_len
-
-            # PATCH_LEN = self.configs.model.patch_len
 
             for sample in test_all_data:
                 if sample["x"].shape[0] > self.seq_len_max_irr:
@@ -222,7 +215,6 @@ def collate_fn(
             flat_x[selected_flat] = torch.nan
             flat_mask[selected_flat] = 0
         else:
-            # logger.warning(f"Number of observations {num_available} * missing rate {configs.missing_rate} = {num_to_mask} observations to be masked. Tips: either observations are too sparse, or --missing_rate is too small. Consider increase --missing_rate.")
             print(f"Number of observations {num_available} * missing rate {configs.data.missing_rate} = {num_to_mask} observations to be masked. Tips: either observations are too sparse, or --missing_rate is too small. Consider increase --missing_rate.")
 
 
