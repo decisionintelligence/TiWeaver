@@ -55,4 +55,15 @@ We provide the experiment scripts under the folder `./Run/scripts`. You can run 
 sh .Run/scripts/humanactivity.sh
 ```
 
-**Note:** This repository currently provides only a deployable TorchScript model file (`.ts`) for running inference and reproducing the results reported in the paper. To protect implementation details, we do not release the original PyTorch model definition and training code at this stage. We will open-source the complete codebase (model architecture, training/evaluation scripts, data processing, and configurations) after the paper is accepted.
+## Citation
+
+If you find this repository useful for your research, please consider citing:
+
+```
+@inproceedings{li2026TiWeaver,
+  title={TiWeaver: Unified Temporal Dynamics Modeling via Contextual Patching},
+  author={Li, Zhe and Tian, Jindong and Miao, Hao and Lei, Zhi and Guo, Chenjuan and Yang, Bin},
+  booktitle={SIGKDD},
+  year={2026}
+}
+```
